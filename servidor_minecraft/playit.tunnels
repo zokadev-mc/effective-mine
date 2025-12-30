@@ -7,6 +7,7 @@
   "tunnels": [
     {
       "active": true,
+      "agent_over_limit": false,
       "alloc": {
         "data": {
           "assigned_domain": "stories-cup.gl.joinmc.link",
@@ -31,6 +32,7 @@
       "domain": null,
       "expire_notice": null,
       "firewall_id": null,
+      "hostname_verify_level": "NoRawIp",
       "id": "5d3a6784-9f21-4e89-bbbb-2fb11f55950f",
       "name": "Minecraft Java",
       "origin": {
@@ -54,6 +56,7 @@
     },
     {
       "active": true,
+      "agent_over_limit": false,
       "alloc": {
         "data": {
           "assigned_domain": "james-might.gl.joinmc.link",
@@ -78,6 +81,7 @@
       "domain": null,
       "expire_notice": null,
       "firewall_id": null,
+      "hostname_verify_level": "NoRawIp",
       "id": "dcf4c5e6-bf92-406d-99f2-2091ff548e6e",
       "name": "Minecraft Java",
       "origin": {
