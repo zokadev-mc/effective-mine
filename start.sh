@@ -1,46 +1,44 @@
 #!/bin/bash
 
-# 1. Matanza inicial (Para evitar el error "Address already in use")
-# Esto asegura que no haya un server viejo bloqueando el puerto.
-echo "🧹 Limpiando procesos zombies..."
-pkill -f playit
-pkill -f java
-sleep 2
+# --- FUNCIÓN DE CIERRE ---
+# Esta función SOLO se ejecuta cuando el servidor de Minecraft se apaga (cuando el script termina)
+al_cerrar() {
+    echo ""
+    echo "🛑 El servidor se ha detenido (comando stop detectado)."
+    echo "🔌 Desconectando Playit..."
+    pkill -f playit
+    echo "✅ Todo apagado correctamente."
+}
 
-# 2. Iniciar Playit
-echo "🚀 Arrancando Playit..."
+# La trampa: Si el script termina (EXIT), ejecuta la función 'al_cerrar'
+trap al_cerrar EXIT
+
+# --- INICIO ---
+echo "---------------------------------------"
+echo "🟢 INICIANDO SECUENCIA"
+echo "---------------------------------------"
+
+# 1. Iniciar Playit primero
+echo "📡 Arrancando Playit en segundo plano..."
+# Lo mandamos al fondo (&) sin matar nada previo
 playit > playit_log.txt 2>&1 &
 
-# 3. Comprobación y Corrección de EULA (Causa #1 de apagado)
+# Importante: Esperamos 5 segundos para asegurar que el túnel se cree antes de seguir
+echo "⏳ Esperando conexión del túnel..."
+sleep 5
+
+# 2. Iniciar el Servidor
 if [ -d "server" ]; then
     cd server
-    # Forzamos que el EULA sea true, por si acaso se reinició
-    echo "eula=true" > eula.txt
+    echo "🎮 Iniciando Minecraft..."
+    echo "   (Recuerda: Escribe 'stop' en la consola para apagar y guardar)"
+    echo "---------------------------------------"
+    
+    # Arrancamos Java. El script se quedará "pausado" en esta línea hasta que el server se cierre.
+    java -Xmx12G -Xms12G -jar server.jar nogui
 else
-    echo "❌ ERROR: No encuentro la carpeta 'server'."
-    exit 1
+    echo "❌ Error: No encuentro la carpeta server."
 fi
 
-# 4. Iniciar Minecraft
-echo "🎮 Iniciando Servidor..."
-echo "----------------------------------------------"
-# Ejecutamos el server
-java -Xmx12G -Xms12G -jar server.jar nogui
-
-# 5. DIAGNÓSTICO POST-MUERTE
-# Si el script llega aquí, es porque el servidor se cerró.
-echo "----------------------------------------------"
-echo "🔴 EL SERVIDOR SE DETUVO."
-echo "🔎 Buscando la causa en el registro (logs/latest.log)..."
-echo "----------------------------------------------"
-
-if [ -f "logs/latest.log" ]; then
-    # Muestra las últimas 15 líneas del error real
-    tail -n 15 logs/latest.log
-else
-    echo "⚠️ No se encontró archivo de log. El servidor ni siquiera arrancó."
-fi
-
-echo "----------------------------------------------"
-echo "🛑 Presiona ENTER para terminar..."
-read input
+# Cuando el java termina (porque escribiste stop), el script sigue y llega al final,
+# activando automáticamente la trampa 'al_cerrar'.
