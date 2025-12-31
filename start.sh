@@ -1,52 +1,46 @@
 #!/bin/bash
 
-# Función para matar playit solo al final
-cleanup() {
-    echo ""
-    echo "🛑 CERRANDO TODO..."
-    pkill -f playit
-    echo "✅ Playit desconectado."
-}
-trap cleanup EXIT
+# 1. Matanza inicial (Para evitar el error "Address already in use")
+# Esto asegura que no haya un server viejo bloqueando el puerto.
+echo "🧹 Limpiando procesos zombies..."
+pkill -f playit
+pkill -f java
+sleep 2
 
-echo "---------------------------------------"
-echo "🔍 MODO DIAGNÓSTICO DE INICIO"
-echo "---------------------------------------"
-
-# 1. Iniciar Playit
-echo "🚀 Arrancando Playit en segundo plano..."
+# 2. Iniciar Playit
+echo "🚀 Arrancando Playit..."
 playit > playit_log.txt 2>&1 &
-sleep 5
 
-# 2. Comprobaciones de seguridad antes de arrancar Java
-echo "📂 Verificando archivos..."
-
-if [ ! -d "server" ]; then
-    echo "❌ ERROR FATAL: No encuentro la carpeta 'server'."
-    echo "   (Estás en: $(pwd))"
-    echo "   Revisa si la carpeta se llama diferente."
+# 3. Comprobación y Corrección de EULA (Causa #1 de apagado)
+if [ -d "server" ]; then
+    cd server
+    # Forzamos que el EULA sea true, por si acaso se reinició
+    echo "eula=true" > eula.txt
+else
+    echo "❌ ERROR: No encuentro la carpeta 'server'."
     exit 1
 fi
 
-cd server
-
-if [ ! -f "server.jar" ]; then
-    echo "❌ ERROR FATAL: No encuentro 'server.jar' dentro de la carpeta server."
-    echo "   Archivos encontrados aquí: $(ls)"
-    exit 1
-fi
-
-# 3. Intentar arrancar Minecraft
-echo "🎮 Intentando arrancar Java con 12GB..."
-echo "⚠️ SI FALLA AQUÍ, ES PROBABLEMENTE POR FALTA DE RAM REAL ⚠️"
-echo "---------------------------------------"
-
-# Ejecutamos Java
+# 4. Iniciar Minecraft
+echo "🎮 Iniciando Servidor..."
+echo "----------------------------------------------"
+# Ejecutamos el server
 java -Xmx12G -Xms12G -jar server.jar nogui
 
-# 4. Pausa final para leer errores
-echo "---------------------------------------"
-echo "🔴 El servidor se ha detenido."
-echo "👀 Lee el error de arriba (si lo hay)."
-echo "⌨️  PRESIONA ENTER PARA APAGAR Y SALIR..."
+# 5. DIAGNÓSTICO POST-MUERTE
+# Si el script llega aquí, es porque el servidor se cerró.
+echo "----------------------------------------------"
+echo "🔴 EL SERVIDOR SE DETUVO."
+echo "🔎 Buscando la causa en el registro (logs/latest.log)..."
+echo "----------------------------------------------"
+
+if [ -f "logs/latest.log" ]; then
+    # Muestra las últimas 15 líneas del error real
+    tail -n 15 logs/latest.log
+else
+    echo "⚠️ No se encontró archivo de log. El servidor ni siquiera arrancó."
+fi
+
+echo "----------------------------------------------"
+echo "🛑 Presiona ENTER para terminar..."
 read input
