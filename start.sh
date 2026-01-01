@@ -7,6 +7,23 @@ al_cerrar() {
     echo "🛑 El servidor se ha detenido (comando stop detectado)."
     echo "🔌 Desconectando Playit..."
     pkill -f playit
+    
+    echo "📦 INICIANDO COPIA DE SEGURIDAD AUTOMÁTICA..."
+    echo "---------------------------------------------"
+
+# 1. Añadimos los mundos al paquete
+    # (Añadimos world, world_nether y world_the_end)
+    git add server/world server/world_nether server/world_the_end
+
+# 2. Guardamos los cambios con la fecha y hora actual
+    fecha=$(date '+%Y-%m-%d %H:%M:%S')
+    git commit -m "Backup automático: $fecha"
+
+# 3. Enviamos a la nube
+    echo "☁️ Subiendo a GitHub..."
+    git push origin main
+
+    echo "---------------------------------------------"
     echo "✅ Todo apagado correctamente."
 }
 
@@ -19,7 +36,7 @@ echo "🟢 INICIANDO SECUENCIA"
 echo "---------------------------------------"
 
 # 1. Iniciar Playit primero
-echo "📡 Arrancando Playit en segundo plano..."
+echo "📡 Arrancando Playit"
 # Lo mandamos al fondo (&) sin matar nada previo
 playit > playit_log.txt 2>&1 &
 
@@ -30,8 +47,8 @@ sleep 5
 # 2. Iniciar el Servidor
 if [ -d "server" ]; then
     cd server
-    echo "🎮 Iniciando Minecraft..."
-    echo "   (Recuerda: Escribe 'stop' en la consola para apagar y guardar)"
+    echo "🎮 Iniciando Servidor..."
+    echo "   (Escribe 'stop' en la consola para apagar y guardar)"
     echo "---------------------------------------"
     
     # Arrancamos Java. El script se quedará "pausado" en esta línea hasta que el server se cierre.
