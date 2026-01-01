@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# 0. Guardamos la ubicación exacta de la carpeta principal al empezar
+CARPETA_PRINCIPAL=$(pwd)
+
 # --- FUNCIÓN DE CIERRE ---
 # Esta función SOLO se ejecuta cuando el servidor de Minecraft se apaga (cuando el script termina)
 al_cerrar() {
@@ -13,6 +16,10 @@ al_cerrar() {
 
 # 1. Añadimos los mundos al paquete
     # (Añadimos world, world_nether y world_the_end)
+    # CORRECCIÓN: Volvemos a la carpeta principal antes de usar git
+    # Así el comando 'git add server/world' funcionará perfectamente.
+    cd "$CARPETA_PRINCIPAL"
+    
     git add server/world server/world_nether server/world_the_end
 
 # 2. Guardamos los cambios con la fecha y hora actual
