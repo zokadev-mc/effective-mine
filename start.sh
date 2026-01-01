@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 1. Guardamos la ubicación de la carpeta principal del repositorio
+# 1. Guardamos la ubicación de la carpeta principal
 CARPETA_PRINCIPAL=$(pwd)
 
 # --- FUNCIÓN DE CIERRE Y BACKUP ---
@@ -11,54 +11,54 @@ al_cerrar() {
     echo "🔌 Desconectando Playit..."
     pkill -f playit
 
-    echo "📦 INICIANDO COPIA DE SEGURIDAD EN 'server/backups'..."
+    echo "📦 INICIANDO COPIA DE SEGURIDAD DIVIDIDA..."
     echo "---------------------------------------------"
     
-    # Volvemos a la raíz del repositorio
+    # Volvemos a la raíz
     cd "$CARPETA_PRINCIPAL"
     
-    # 1. Instalar ZIP si no existe (necesario para comprimir)
+    # Instalar ZIP si falta
     if ! command -v zip &> /dev/null; then
-        echo "🔧 Instalando herramienta de compresión (zip)..."
         sudo apt-get update -qq && sudo apt-get install -y zip -qq
     fi
 
-    # 2. Crear la carpeta de backups si no existe
+    # Crear carpeta
     if [ ! -d "server/backups" ]; then
         mkdir -p server/backups
-        echo "📂 Carpeta 'server/backups' creada."
     fi
 
-    # 3. Generar nombre del archivo con fecha y hora (Ej: backup_2023-12-31_18-00.zip)
+    # Configurar nombre
     FECHA=$(date '+%Y-%m-%d_%H-%M')
     NOMBRE_ZIP="server/backups/backup_$FECHA.zip"
 
-    echo "🗜️ Comprimiendo mundos en: $NOMBRE_ZIP"
-    
-    # Comprimimos las carpetas de los mundos (world, nether, end) en el archivo zip
-    # -r = recursivo (todo lo de adentro)
-    # -q = silencioso (para no llenar la pantalla de texto)
+    echo "🗜️ Comprimiendo mundos..."
     zip -r -q "$NOMBRE_ZIP" server/world server/world_nether server/world_the_end
+    
+    echo "✂️ Dividiendo archivo en partes de 90MB..."
+    # Aquí está la MAGIA: 'split' divide el zip grande en trozos pequeños
+    split -b 90M "$NOMBRE_ZIP" "$NOMBRE_ZIP.part"
+    
+    # Borramos el ZIP gigante original porque ya tenemos los trozos
+    rm "$NOMBRE_ZIP"
 
     # 4. Subir a GitHub
-    echo "☁️ Subiendo archivo a la nube..."
+    echo "☁️ Subiendo partes a la nube..."
     
-    # Solo agregamos el nuevo zip creado
-    git add "$NOMBRE_ZIP"
+    # Agregamos todas las partes generadas (.partaa, .partab, etc)
+    git add server/backups/backup_*.part*
     
-    git commit -m "Backup automático: $FECHA"
+    git commit -m "Backup dividido: $FECHA"
     git push origin main
     
     echo "---------------------------------------------"
-    echo "✅ ¡Copia de seguridad guardada en server/backups!"
+    echo "✅ ¡Backup guardado en trozos!"
 }
 
-# Trampa para activar el cierre
 trap al_cerrar EXIT
 
 # --- INICIO ---
 echo "---------------------------------------"
-echo "🟢 INICIANDO SERVIDOR (Con Backups ZIP)"
+echo "🟢 INICIANDO SERVIDOR (Modo Split-Backup)"
 echo "---------------------------------------"
 
 # 1. Playit
@@ -71,10 +71,8 @@ sleep 5
 if [ -d "server" ]; then
     cd server
     echo "🎮 Servidor ONLINE (12GB)"
-    echo "   Escribe 'stop' para guardar y salir."
-    echo "---------------------------------------"
     
-    # TU COMANDO CORRECTO (El que funcionó):
+    # TU COMANDO QUE FUNCIONA:
     java -Xms12G -Xmx12G -jar server.jar nogui
     
 else
