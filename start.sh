@@ -1,20 +1,18 @@
 #!/bin/bash
 
-# 1. Guardamos la ubicación de la carpeta principal
+# Guardamos ubicación
 CARPETA_PRINCIPAL=$(pwd)
 
-# --- FUNCIÓN DE CIERRE Y BACKUP ---
+# --- FUNCIÓN DE CIERRE ---
 al_cerrar() {
     echo ""
     echo "🛑 El servidor se ha detenido."
-    
     echo "🔌 Desconectando Playit..."
     pkill -f playit
 
-    echo "📦 INICIANDO COPIA DE SEGURIDAD DIVIDIDA..."
+    echo "📦 INICIANDO BACKUP (Hora Colombia)..."
     echo "---------------------------------------------"
     
-    # Volvemos a la raíz
     cd "$CARPETA_PRINCIPAL"
     
     # Instalar ZIP si falta
@@ -22,57 +20,56 @@ al_cerrar() {
         sudo apt-get update -qq && sudo apt-get install -y zip -qq
     fi
 
-    # Crear carpeta
     if [ ! -d "server/backups" ]; then
         mkdir -p server/backups
     fi
 
-    # Configurar nombre
-    FECHA=$(date '+%Y-%m-%d_%H-%M')
-    NOMBRE_ZIP="server/backups/backup_$FECHA.zip"
+    # --- CAMBIO CLAVE: Hora de Colombia (America/Bogota) ---
+    # %I = Hora formato 12h
+    # %M = Minutos
+    # %p = AM/PM
+    # Ejemplo de nombre resultante: backup_2025-12-31_08-55-PM.zip
+    FECHA=$(TZ="America/Bogota" date '+%Y-%m-%d_%I-%M-%p')
+    
+    # Nombre base (WinRAR compatible)
+    NOMBRE_BASE="server/backups/backup_$FECHA.zip"
 
-    echo "🗜️ Comprimiendo mundos..."
-    zip -r -q "$NOMBRE_ZIP" server/world server/world_nether server/world_the_end
+    echo "🗜️ Creando archivo: $NOMBRE_BASE"
+    echo "   (División automática en partes de 90MB para GitHub)"
     
-    echo "✂️ Dividiendo archivo en partes de 90MB..."
-    # Aquí está la MAGIA: 'split' divide el zip grande en trozos pequeños
-    split -b 90M "$NOMBRE_ZIP" "$NOMBRE_ZIP.part"
+    # Creamos el zip dividido compatible con WinRAR
+    zip -r -s 90m -q "$NOMBRE_BASE" server/world server/world_nether server/world_the_end
     
-    # Borramos el ZIP gigante original porque ya tenemos los trozos
-    rm "$NOMBRE_ZIP"
-
-    # 4. Subir a GitHub
-    echo "☁️ Subiendo partes a la nube..."
+    echo "☁️ Subiendo a GitHub..."
     
-    # Agregamos todas las partes generadas (.partaa, .partab, etc)
-    git add server/backups/backup_*.part*
+    # Agregamos los archivos generados (.z01, .zip, etc)
+    git add server/backups/backup_*
     
-    git commit -m "Backup dividido: $FECHA"
+    # En el mensaje del commit también ponemos la hora colombiana exacta
+    git commit -m "Backup Colombia: $FECHA"
     git push origin main
     
     echo "---------------------------------------------"
-    echo "✅ ¡Backup guardado en trozos!"
+    echo "✅ ¡Backup guardado con hora local!"
 }
 
 trap al_cerrar EXIT
 
 # --- INICIO ---
 echo "---------------------------------------"
-echo "🟢 INICIANDO SERVIDOR (Modo Split-Backup)"
+echo "🟢 INICIANDO SERVIDOR"
 echo "---------------------------------------"
 
-# 1. Playit
 echo "📡 Arrancando Playit..."
 playit > playit_log.txt 2>&1 &
 echo "⏳ Esperando túnel (5s)..."
 sleep 5
 
-# 2. Minecraft
 if [ -d "server" ]; then
     cd server
     echo "🎮 Servidor ONLINE (12GB)"
     
-    # TU COMANDO QUE FUNCIONA:
+    # TU COMANDO:
     java -Xms12G -Xmx12G -jar server.jar nogui
     
 else
