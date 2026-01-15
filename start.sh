@@ -2,10 +2,10 @@
 
 # --- ⚙️ CONFIGURACIÓN DE IDENTIDADES (¡CAMBIA ESTO!) ---
 # Nombre EXACTO del archivo .dat de tu cuenta de Java
-UUID_JAVA="TU_UUID_JAVA.dat"
+UUID_JAVA="af334b6e-99af-345f-bdef-5e86f82e3ded.dat"
 
 # Nombre EXACTO del archivo .dat de tu cuenta de Bedrock
-UUID_BEDROCK="TU_UUID_BEDROCK.dat"
+UUID_BEDROCK="c968f818-ff25-4de4-a70b-e399afdd7968.dat"
 # -------------------------------------------------------
 
 # Guardamos la ubicación de la casa (raíz) al empezar
