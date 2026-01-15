@@ -9,55 +9,55 @@ al_cerrar() {
     echo "🛑 El servidor se ha detenido."
     echo "🔌 Desconectando Playit..."
     pkill -f playit
+    
+    # --- PREGUNTA DE SEGURIDAD ---
+    echo ""
+    echo "❓ ¿Quieres subir una COPIA DE SEGURIDAD a GitHub? (s/n)"
+    read -r -n 1 respuesta
+    echo "" # Salto de línea estético
 
-    echo "📦 INICIANDO BACKUP (Hora Colombia)..."
-    echo "---------------------------------------------"
-    
-    cd "$CARPETA_PRINCIPAL"
-    
-    # Instalar ZIP si falta
-    if ! command -v zip &> /dev/null; then
-        sudo apt-get update -qq && sudo apt-get install -y zip -qq
+    # Si la respuesta es 's' o 'S', hacemos el backup
+    if [[ "$respuesta" =~ ^[sS]$ ]]; then
+        echo "📦 INICIANDO BACKUP (Hora Colombia)..."
+        echo "---------------------------------------------"
+        
+        cd "$CARPETA_PRINCIPAL"
+        
+        # Instalar ZIP si falta
+        if ! command -v zip &> /dev/null; then
+            sudo apt-get update -qq && sudo apt-get install -y zip -qq
+        fi
+
+        if [ ! -d "server/backups" ]; then
+            mkdir -p server/backups
+        fi
+
+        # Configuración de hora Colombia
+        FECHA=$(TZ="America/Bogota" date '+%Y-%m-%d_%I-%M-%p')
+        NOMBRE_BASE="server/backups/backup_$FECHA.zip"
+
+        echo "🗜️ Creando archivo: $NOMBRE_BASE"
+        
+        # Comprimir dividido (90MB) compatible con WinRAR
+        zip -r -s 90m -q "$NOMBRE_BASE" server/world server/world_nether server/world_the_end
+        
+        echo "☁️ Subiendo a GitHub..."
+        git add server/backups/backup_*
+        git commit -m "Backup Colombia: $FECHA"
+        git push origin main
+        
+        echo "---------------------------------------------"
+        echo "✅ ¡Backup guardado con éxito!"
+    else
+        echo "NO se ha creado copia de seguridad."
     fi
-
-    if [ ! -d "server/backups" ]; then
-        mkdir -p server/backups
-    fi
-
-    # --- CAMBIO CLAVE: Hora de Colombia (America/Bogota) ---
-    # %I = Hora formato 12h
-    # %M = Minutos
-    # %p = AM/PM
-    # Ejemplo de nombre resultante: backup_2025-12-31_08-55-PM.zip
-    FECHA=$(TZ="America/Bogota" date '+%Y-%m-%d_%I-%M-%p')
-    
-    # Nombre base (WinRAR compatible)
-    NOMBRE_BASE="server/backups/backup_$FECHA.zip"
-
-    echo "🗜️ Creando archivo: $NOMBRE_BASE"
-    echo "   (División automática en partes de 90MB para GitHub)"
-    
-    # Creamos el zip dividido compatible con WinRAR
-    zip -r -s 90m -q "$NOMBRE_BASE" server/world server/world_nether server/world_the_end
-    
-    echo "☁️ Subiendo a GitHub..."
-    
-    # Agregamos los archivos generados (.z01, .zip, etc)
-    git add server/backups/backup_*
-    
-    # En el mensaje del commit también ponemos la hora colombiana exacta
-    git commit -m "Backup Colombia: $FECHA"
-    git push origin main
-    
-    echo "---------------------------------------------"
-    echo "✅ ¡Backup guardado con hora local!"
 }
 
 trap al_cerrar EXIT
 
 # --- INICIO ---
 echo "---------------------------------------"
-echo "🟢 INICIANDO SERVIDOR"
+echo "🟢 INICIANDO SERVIDOR (Con Pregunta de Backup)"
 echo "---------------------------------------"
 
 echo "📡 Arrancando Playit..."
