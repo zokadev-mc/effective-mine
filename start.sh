@@ -11,29 +11,40 @@ UUID_BEDROCK="c968f818-ff25-4de4-a70b-e399afdd7968.dat"
 CARPETA_PRINCIPAL=$(pwd)
 RUTA_DATA="server/world/playerdata"
 
-# --- FUNCIÓN DE SINCRONIZACIÓN AL CERRAR ---
-sincronizar_salida() {
-    echo "🔄 Verificando sincronización de cuentas..."
+# --- FUNCIÓN MAESTRA DE SINCRONIZACIÓN ---
+# Esta función compara fechas y clona el más nuevo sobre el más viejo
+sincronizar_cuentas() {
+    echo "🔄 Analizando fechas de guardado..."
     
-    if [ -f "$RUTA_DATA/$UUID_BEDROCK" ] && [ -f "$RUTA_DATA/$UUID_JAVA" ]; then
-        # Comparamos: ¿Es el archivo de Bedrock más nuevo que el de Java?
-        if [ "$RUTA_DATA/$UUID_BEDROCK" -nt "$RUTA_DATA/$UUID_JAVA" ]; then
-            echo "📱 Detectado progreso en Bedrock. Sincronizando hacia Java..."
-            cp "$RUTA_DATA/$UUID_BEDROCK" "$RUTA_DATA/$UUID_JAVA"
-            echo "✅ Progreso guardado en la cuenta maestra."
+    FILE_JAVA="$RUTA_DATA/$UUID_JAVA"
+    FILE_BEDROCK="$RUTA_DATA/$UUID_BEDROCK"
+
+    if [ -f "$FILE_JAVA" ] && [ -f "$FILE_BEDROCK" ]; then
+        # ¿Es Bedrock más nuevo que Java?
+        if [ "$FILE_BEDROCK" -nt "$FILE_JAVA" ]; then
+            echo "📱 Detectado progreso reciente en BEDROCK."
+            echo "   ↳ Sincronizando: Bedrock >>> Java"
+            cp "$FILE_BEDROCK" "$FILE_JAVA"
+        # ¿Es Java más nuevo que Bedrock?
+        elif [ "$FILE_JAVA" -nt "$FILE_BEDROCK" ]; then
+            echo "💻 Detectado progreso reciente en JAVA."
+            echo "   ↳ Sincronizando: Java >>> Bedrock"
+            cp "$FILE_JAVA" "$FILE_BEDROCK"
         else
-            echo "💻 La cuenta maestra (Java) ya está actualizada."
+            echo "✅ Ambas cuentas están sincronizadas (mismo timestamp)."
         fi
+    else
+        echo "⚠️ Alerta: No encuentro uno de los archivos de datos (UUIDs). Revisa la configuración."
     fi
 }
 
-# --- FUNCIÓN DE CIERRE GENERAL ---
+# --- FUNCIÓN DE CIERRE ---
 al_cerrar() {
     echo ""
     echo "🛑 El servidor se ha detenido."
     
-    # 1. Ejecutamos la sincronización ANTES del backup
-    sincronizar_salida
+    # 1. Sincronizamos INMEDIATAMENTE al cerrar para guardar el progreso cruzado
+    sincronizar_cuentas
     
     echo "🔌 Desconectando Playit..."
     pkill -f playit
@@ -46,21 +57,14 @@ al_cerrar() {
 
     if [[ "$respuesta" =~ ^[sS]$ ]]; then
         echo "📦 INICIANDO BACKUP (Hora Colombia)..."
-        echo "---------------------------------------------"
-        
         cd "$CARPETA_PRINCIPAL"
-        if ! command -v zip &> /dev/null; then
-            sudo apt-get update -qq && sudo apt-get install -y zip -qq
-        fi
+        if ! command -v zip &> /dev/null; then sudo apt-get update -qq && sudo apt-get install -y zip -qq; fi
         if [ ! -d "server/backups" ]; then mkdir -p server/backups; fi
 
         FECHA=$(TZ="America/Bogota" date '+%Y-%m-%d_%I-%M-%p')
         NOMBRE_BASE="server/backups/backup_$FECHA.zip"
 
-        echo "🗜️ Creando archivo: $NOMBRE_BASE"
         zip -r -s 90m -q "$NOMBRE_BASE" server/world server/world_nether server/world_the_end
-        
-        echo "☁️ Subiendo a GitHub..."
         git add server/backups/backup_*
         git commit -m "Backup Colombia: $FECHA"
         git push origin main
@@ -74,18 +78,11 @@ trap al_cerrar EXIT
 
 # --- INICIO ---
 echo "---------------------------------------"
-echo "🟢 INICIANDO SERVIDOR (Modo Sincronización)"
+echo "🟢 INICIANDO SERVIDOR (Sincronización Bidireccional)"
 echo "---------------------------------------"
 
-# 1. SINCRONIZACIÓN DE ENTRADA (Java -> Bedrock)
-# Antes de arrancar, nos aseguramos que Bedrock tenga la última copia de Java
-echo "🔄 Sincronizando inventarios (Java -> Bedrock)..."
-if [ -f "$RUTA_DATA/$UUID_JAVA" ]; then
-    cp "$RUTA_DATA/$UUID_JAVA" "$RUTA_DATA/$UUID_BEDROCK"
-    echo "✅ Cuenta de Bedrock actualizada con datos de Java."
-else
-    echo "⚠️ Advertencia: No encuentro el archivo de datos de Java."
-fi
+# 1. Sincronizamos AL ENTRAR para cargar la última partida (sea cual sea)
+sincronizar_cuentas
 echo "---------------------------------------"
 
 echo "📡 Arrancando Playit..."
