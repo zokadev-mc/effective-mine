@@ -1,18 +1,18 @@
 #!/bin/bash
 
-# --- CONFIGURACIÓN DE IDENTIDADES (¡CAMBIA ESTO!) ---
-# Pon aquí el nombre EXACTO del archivo .dat de tu cuenta de Java (sin la ruta, solo el nombre)
-UUID_JAVA="af334b6e-99af-345f-bdef-5e86f82e3ded.dat"
+# --- ⚙️ CONFIGURACIÓN DE IDENTIDADES (¡CAMBIA ESTO!) ---
+# Nombre EXACTO del archivo .dat de tu cuenta de Java
+UUID_JAVA="TU_UUID_JAVA.dat"
 
-# Pon aquí el nombre EXACTO del archivo .dat de tu cuenta de Bedrock
-UUID_BEDROCK="c968f818-ff25-4de4-a70b-e399afdd7968.dat"
-# ----------------------------------------------------
+# Nombre EXACTO del archivo .dat de tu cuenta de Bedrock
+UUID_BEDROCK="TU_UUID_BEDROCK.dat"
+# -------------------------------------------------------
 
+# Guardamos la ubicación de la casa (raíz) al empezar
 CARPETA_PRINCIPAL=$(pwd)
 RUTA_DATA="server/world/playerdata"
 
 # --- FUNCIÓN MAESTRA DE SINCRONIZACIÓN ---
-# Esta función compara fechas y clona el más nuevo sobre el más viejo
 sincronizar_cuentas() {
     echo "🔄 Analizando fechas de guardado..."
     
@@ -31,19 +31,22 @@ sincronizar_cuentas() {
             echo "   ↳ Sincronizando: Java >>> Bedrock"
             cp "$FILE_JAVA" "$FILE_BEDROCK"
         else
-            echo "✅ Ambas cuentas están sincronizadas (mismo timestamp)."
+            echo "✅ Ambas cuentas están sincronizadas."
         fi
     else
-        echo "⚠️ Alerta: No encuentro uno de los archivos de datos (UUIDs). Revisa la configuración."
+        echo "⚠️ Alerta: No encuentro los archivos en: $RUTA_DATA"
     fi
 }
 
 # --- FUNCIÓN DE CIERRE ---
 al_cerrar() {
+    # [CORRECCIÓN CRÍTICA] Volvemos a la raíz ANTES de hacer nada
+    cd "$CARPETA_PRINCIPAL"
+
     echo ""
     echo "🛑 El servidor se ha detenido."
     
-    # 1. Sincronizamos INMEDIATAMENTE al cerrar para guardar el progreso cruzado
+    # Ahora que estamos en la raíz, la ruta 'server/world/...' sí existe
     sincronizar_cuentas
     
     echo "🔌 Desconectando Playit..."
@@ -57,7 +60,7 @@ al_cerrar() {
 
     if [[ "$respuesta" =~ ^[sS]$ ]]; then
         echo "📦 INICIANDO BACKUP (Hora Colombia)..."
-        cd "$CARPETA_PRINCIPAL"
+        
         if ! command -v zip &> /dev/null; then sudo apt-get update -qq && sudo apt-get install -y zip -qq; fi
         if [ ! -d "server/backups" ]; then mkdir -p server/backups; fi
 
@@ -78,10 +81,10 @@ trap al_cerrar EXIT
 
 # --- INICIO ---
 echo "---------------------------------------"
-echo "🟢 INICIANDO SERVIDOR (Sincronización Bidireccional)"
+echo "🟢 INICIANDO SERVIDOR"
 echo "---------------------------------------"
 
-# 1. Sincronizamos AL ENTRAR para cargar la última partida (sea cual sea)
+# Sincronizamos al entrar (Aquí ya estamos en la raíz, así que funciona bien)
 sincronizar_cuentas
 echo "---------------------------------------"
 
