@@ -8,9 +8,10 @@ UUID_JAVA="af334b6e-99af-345f-bdef-5e86f82e3ded.dat"
 UUID_BEDROCK="c968f818-ff25-4de4-a70b-e399afdd7968.dat"
 # -------------------------------------------------------
 
-# Guardamos la ubicación de la casa (raíz) al empezar
 CARPETA_PRINCIPAL=$(pwd)
-RUTA_DATA="server/world/playerdata"
+CARPETA_SERVER="servidor_minecraft"
+RUTA_DATA="$CARPETA_SERVER/world/playerdata"
+JAR_SERVER="paper.jar"
 
 # --- FUNCIÓN MAESTRA DE SINCRONIZACIÓN ---
 sincronizar_cuentas() {
@@ -20,12 +21,10 @@ sincronizar_cuentas() {
     FILE_BEDROCK="$RUTA_DATA/$UUID_BEDROCK"
 
     if [ -f "$FILE_JAVA" ] && [ -f "$FILE_BEDROCK" ]; then
-        # ¿Es Bedrock más nuevo que Java?
         if [ "$FILE_BEDROCK" -nt "$FILE_JAVA" ]; then
             echo "📱 Detectado progreso reciente en BEDROCK."
             echo "   ↳ Sincronizando: Bedrock >>> Java"
             cp "$FILE_BEDROCK" "$FILE_JAVA"
-        # ¿Es Java más nuevo que Bedrock?
         elif [ "$FILE_JAVA" -nt "$FILE_BEDROCK" ]; then
             echo "💻 Detectado progreso reciente en JAVA."
             echo "   ↳ Sincronizando: Java >>> Bedrock"
@@ -40,19 +39,16 @@ sincronizar_cuentas() {
 
 # --- FUNCIÓN DE CIERRE ---
 al_cerrar() {
-    # [CORRECCIÓN CRÍTICA] Volvemos a la raíz ANTES de hacer nada
     cd "$CARPETA_PRINCIPAL"
 
     echo ""
     echo "🛑 El servidor se ha detenido."
     
-    # Ahora que estamos en la raíz, la ruta 'server/world/...' sí existe
     sincronizar_cuentas
     
     echo "🔌 Desconectando Playit..."
-    pkill -f playit
+    pkill -f playitd
     
-    # Pregunta de Backup
     echo ""
     echo "❓ ¿Quieres subir una COPIA DE SEGURIDAD a GitHub? (s/n)"
     read -r -n 1 respuesta
@@ -67,7 +63,7 @@ al_cerrar() {
         FECHA=$(TZ="America/Bogota" date '+%Y-%m-%d_%I-%M-%p')
         NOMBRE_BASE="server/backups/backup_$FECHA.zip"
 
-        zip -r -s 90m -q "$NOMBRE_BASE" server/world server/world_nether server/world_the_end
+        zip -r -s 90m -q "$NOMBRE_BASE" "$CARPETA_SERVER/world" "$CARPETA_SERVER/world_nether" "$CARPETA_SERVER/world_the_end"
         git add server/backups/backup_*
         git commit -m "Backup Colombia: $FECHA"
         git push origin main
@@ -84,19 +80,24 @@ echo "---------------------------------------"
 echo "🟢 INICIANDO SERVIDOR"
 echo "---------------------------------------"
 
-# Sincronizamos al entrar (Aquí ya estamos en la raíz, así que funciona bien)
 sincronizar_cuentas
 echo "---------------------------------------"
 
-echo "📡 Arrancando Playit..."
-playit > playit_log.txt 2>&1 &
-echo "⏳ Esperando túnel (5s)..."
-sleep 5
-
-if [ -d "server" ]; then
-    cd server
-    echo "🎮 Servidor ONLINE (12GB)"
-    java -Xms12G -Xmx12G -jar server.jar nogui
+if ! pgrep -f "playitd" > /dev/null; then
+    echo "📡 Arrancando Playit..."
+    mkdir -p /run/playit
+    sudo chmod 777 /run/playit 2>/dev/null
+    /opt/playit/playitd --socket-path /run/playit/playitd.sock > playit_log.txt 2>&1 &
 else
-    echo "❌ Error: No encuentro la carpeta server."
+    echo "📡 Playit ya está corriendo"
+fi
+echo "⏳ Esperando túnel (10s)..."
+sleep 10
+
+if [ -d "$CARPETA_SERVER" ]; then
+    cd "$CARPETA_SERVER"
+    echo "🎮 Servidor ONLINE (12GB)"
+    java -Xms12G -Xmx12G -jar "$JAR_SERVER" nogui
+else
+    echo "❌ Error: No encuentro la carpeta $CARPETA_SERVER."
 fi
